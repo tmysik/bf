@@ -25,4 +25,4 @@ do
 done
 
 #echo "$JAVACMD $JAVA_ARGS -polyglot -cp ./target/classes com.oracle.truffle.bf.BFMain $PROGRAM_ARGS"
-$JAVACMD $JAVA_ARGS -polyglot -cp ./target/classes com.oracle.truffle.bf.BFMain $PROGRAM_ARGS
+$JAVACMD $JAVA_ARGS -polyglot -cp ./target/classes com.oracle.truffle.bf.test.BFMain $PROGRAM_ARGS
