@@ -6,6 +6,11 @@
 package com.oracle.truffle.bf.test;
 
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.debug.Breakpoint;
+import com.oracle.truffle.api.debug.Debugger;
+import com.oracle.truffle.api.debug.DebuggerSession;
+import com.oracle.truffle.api.debug.SuspendedCallback;
+import com.oracle.truffle.api.debug.SuspendedEvent;
 import com.oracle.truffle.api.dsl.UnsupportedSpecializationException;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.vm.PolyglotEngine;
@@ -15,6 +20,10 @@ import java.io.InputStreamReader;
 import java.io.PrintStream;
 
 public final class BFMain {
+
+    // XXX debug does not work, NPE
+    private static final boolean DEBUG = false;
+
 
     private BFMain() {
     }
@@ -37,19 +46,34 @@ public final class BFMain {
                     .build();
         }
         long time = System.currentTimeMillis();
-        executeSource(source, System.in, System.out);
+        executeSource(source, System.in, System.out, DEBUG);
         System.out.println("");
         System.out.println("Elapsed " + (System.currentTimeMillis() - time) + "ms");
     }
 
-    private static void executeSource(Source source, InputStream in, PrintStream out) {
+    private static void executeSource(Source source, InputStream in, PrintStream out, boolean debug) {
         out.println("== running on " + Truffle.getRuntime().getName());
 
         PolyglotEngine engine = PolyglotEngine.newBuilder().setIn(in).setOut(out).build();
         assert engine.getLanguages().containsKey(BFLanguage.MIME_TYPE);
 
         try {
-            engine.eval(source);
+            if (debug) {
+                Debugger debugger = Debugger.find(engine);
+                final SuspendedCallback callback = new SuspendedCallback() {
+                    @Override
+                    public void onSuspend(SuspendedEvent event) {
+                        System.out.println("------------------- suspended");
+                        event.prepareStepInto(1);
+                    }
+                };
+                try (DebuggerSession session = debugger.startSession(callback)) {
+                    session.install(Breakpoint.newBuilder(source).lineIs(1).build());
+                    engine.eval(source);
+                }
+            } else {
+                engine.eval(source);
+            }
         } catch (Throwable ex) {
             /*
              * PolyglotEngine.eval wraps the actual exception in an IOException, so we have to

@@ -9,7 +9,10 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.debug.DebuggerTags;
 import com.oracle.truffle.api.frame.MaterializedFrame;
+import com.oracle.truffle.api.instrumentation.ProvidedTags;
+import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.bf.BFParser;
@@ -18,6 +21,7 @@ import java.io.InputStreamReader;
 import java.io.PrintWriter;
 
 @TruffleLanguage.Registration(name = "BF", version = "0.1", mimeType = BFLanguage.MIME_TYPE)
+@ProvidedTags({StandardTags.StatementTag.class, StandardTags.RootTag.class, DebuggerTags.AlwaysHalt.class})
 public final class BFLanguage extends TruffleLanguage<BFContext> {
 
     public static final String MIME_TYPE = "application/x-bf";
@@ -43,7 +47,7 @@ public final class BFLanguage extends TruffleLanguage<BFContext> {
     @Override
     protected CallTarget parse(Source source, Node node, String... strings) throws Exception {
         BFParser.Operation[] operations = new BFParser().parse(source.getInputStream());
-        BFRootNode rootNode = new BFRootNode(prepareNodes(source, operations));
+        BFRootNode rootNode = new BFRootNode(prepareNodes(source, operations), source.createSection(0, source.getLength()));
         return Truffle.getRuntime().createCallTarget(rootNode);
     }
 
@@ -75,7 +79,7 @@ public final class BFLanguage extends TruffleLanguage<BFContext> {
             if (code == BFParser.OpCode.REPEAT) {
                 children = prepareNodes(source, ((BFParser.Repeat) operations[i]).getChildren());
             }
-            nodes[i] = new OperationNode(code, children);
+            nodes[i] = new OperationNode(code, children, source.createSection(i, 1));
         }
         return nodes;
     }

@@ -6,24 +6,35 @@
 package com.oracle.truffle.bf.test;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.debug.DebuggerTags;
+import com.oracle.truffle.api.instrumentation.Instrumentable;
+import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.bf.BFParser;
 import java.io.IOException;
 import java.util.Arrays;
 
+@Instrumentable(factory = OperationNodeWrapper.class)
 public class OperationNode extends Node {
 
     private final BFParser.OpCode opCode;
     @Node.Children
     private final OperationNode[] children;
+    private final SourceSection sourceSection;
     private final BranchProfile expansion = BranchProfile.create();
 
 
-    OperationNode(BFParser.OpCode opCode, OperationNode[] children) {
+    public OperationNode(OperationNode node) {
+        this(node.opCode, node.children, node.sourceSection);
+    }
+
+    OperationNode(BFParser.OpCode opCode, OperationNode[] children, SourceSection sourceSection) {
         this.opCode = opCode;
         this.children = children;
+        this.sourceSection = sourceSection;
     }
 
     public void execute(Memory memory) {
@@ -82,6 +93,22 @@ public class OperationNode extends Node {
         for (OperationNode child : children) {
             child.execute(memory);
         }
+    }
+
+    @Override
+    public SourceSection getSourceSection() {
+        return sourceSection;
+    }
+
+    @Override
+    protected boolean isTaggedWith(Class<?> tag) {
+        if (tag == StandardTags.StatementTag.class) {
+            return true;
+        }
+        if (tag == DebuggerTags.AlwaysHalt.class) {
+            return true;
+        }
+        return super.isTaggedWith(tag);
     }
 
     @Override
