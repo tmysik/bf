@@ -47,7 +47,7 @@ public final class BFLanguage extends TruffleLanguage<BFContext> {
     @Override
     protected CallTarget parse(Source source, Node node, String... strings) throws Exception {
         BFParser.Operation[] operations = new BFParser().parse(source.getInputStream());
-        BFRootNode rootNode = new BFRootNode(prepareNodes(source, operations), source.createSection(0, source.getLength()));
+        BFRootNode rootNode = new BFRootNode(prepareNodes(source, operations));
         return Truffle.getRuntime().createCallTarget(rootNode);
     }
 
